@@ -69,6 +69,20 @@ async fn day2_task2(info: web::Query<QueryInfo2>) -> String {
     format!("{}.{}.{}.{}", result_vec[0], result_vec[1],result_vec[2],result_vec[3])
 }
 
+#[get("/2/v6/dest")]
+async fn v6_dest(info: web::Query<QueryInfo>) -> String {
+    todo!()
+}
+
+#[get("/2/v6/key")]
+async fn v6_key(info: web::Query<QueryInfo2>) -> String {
+    todo!()
+}
+
+fn to_ip_v6_vec(s: &str) -> [u16;8] {
+    todo!()
+}
+
 #[shuttle_runtime::main]
 async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     let config = move |cfg: &mut ServiceConfig| {
