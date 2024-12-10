@@ -1,6 +1,14 @@
-use actix_web::{get, web::ServiceConfig, HttpResponse};
 use actix_web::http::StatusCode;
+use actix_web::{get, web, web::ServiceConfig, HttpResponse};
+use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
+use std::str::FromStr;
+
+#[derive(Deserialize)]
+struct QueryInfo {
+    from: String,
+    key: String,
+}
 
 #[get("/")]
 async fn hello_bird() -> &'static str {
@@ -15,10 +23,32 @@ async fn find_seek() -> HttpResponse {
         .finish()
 }
 
+#[get("/2/dest")]
+async fn eg_encryption(info: web::Query<QueryInfo>) -> String {
+    let from_vec = info
+        .from
+        .split('.')
+        .map(|s| u8::from_str(s).unwrap())
+        .collect::<Vec<_>>();
+    let key_vec = info
+        .key
+        .split('.')
+        .map(|s| u8::from_str(s).unwrap())
+        .collect::<Vec<_>>();
+    let mut result_vec = vec![];
+    for i in 0..4 {
+        let r = from_vec[i].overflowing_add(key_vec[i]);
+        result_vec.push(r.0);
+    }
+    format!("{}.{}.{}.{}", result_vec[0], result_vec[1],result_vec[2],result_vec[3])
+}
+
 #[shuttle_runtime::main]
 async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     let config = move |cfg: &mut ServiceConfig| {
-        cfg.service(hello_bird).service(find_seek);
+        cfg.service(hello_bird)
+            .service(find_seek)
+            .service(eg_encryption);
     };
 
     Ok(config.into())
