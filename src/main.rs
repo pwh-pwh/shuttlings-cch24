@@ -2,6 +2,8 @@ use actix_web::http::StatusCode;
 use actix_web::{get, web, web::ServiceConfig, HttpResponse};
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
+use std::net::Ipv6Addr;
+use std::ops::BitXor;
 use std::str::FromStr;
 
 #[derive(Deserialize)]
@@ -13,7 +15,7 @@ struct QueryInfo {
 #[derive(Deserialize)]
 struct QueryInfo2 {
     from: String,
-    to: String
+    to: String,
 }
 
 #[get("/")]
@@ -46,7 +48,10 @@ async fn eg_encryption(info: web::Query<QueryInfo>) -> String {
         let r = from_vec[i].overflowing_add(key_vec[i]);
         result_vec.push(r.0);
     }
-    format!("{}.{}.{}.{}", result_vec[0], result_vec[1],result_vec[2],result_vec[3])
+    format!(
+        "{}.{}.{}.{}",
+        result_vec[0], result_vec[1], result_vec[2], result_vec[3]
+    )
 }
 
 #[get("/2/key")]
@@ -66,21 +71,77 @@ async fn day2_task2(info: web::Query<QueryInfo2>) -> String {
         let r = to_vec[i].overflowing_sub(from_vec[i]);
         result_vec.push(r.0);
     }
-    format!("{}.{}.{}.{}", result_vec[0], result_vec[1],result_vec[2],result_vec[3])
+    format!(
+        "{}.{}.{}.{}",
+        result_vec[0], result_vec[1], result_vec[2], result_vec[3]
+    )
 }
 
 #[get("/2/v6/dest")]
 async fn v6_dest(info: web::Query<QueryInfo>) -> String {
-    todo!()
+    let from_vec = to_ip_v6_vec(&info.from);
+    let key_vec = to_ip_v6_vec(&info.key);
+    let mut result_vec = vec![];
+    for i in 0..8 {
+        let r = from_vec[i].bitxor(key_vec[i]);
+        result_vec.push(r);
+    }
+    let r = Ipv6Addr::from([
+        result_vec[0],
+        result_vec[1],
+        result_vec[2],
+        result_vec[3],
+        result_vec[4],
+        result_vec[5],
+        result_vec[6],
+        result_vec[7],
+    ])
+    .to_string();
+    r
 }
 
 #[get("/2/v6/key")]
 async fn v6_key(info: web::Query<QueryInfo2>) -> String {
-    todo!()
+    let from_vec = to_ip_v6_vec(&info.from);
+    let to_vec = to_ip_v6_vec(&info.to);
+    let mut result_vec = vec![];
+    for i in 0..8 {
+        let r = from_vec[i].bitxor(to_vec[i]);
+        result_vec.push(r);
+    }
+    let r = Ipv6Addr::from([
+        result_vec[0],
+        result_vec[1],
+        result_vec[2],
+        result_vec[3],
+        result_vec[4],
+        result_vec[5],
+        result_vec[6],
+        result_vec[7],
+    ])
+    .to_string();
+    r
 }
 
-fn to_ip_v6_vec(s: &str) -> [u16;8] {
-    todo!()
+pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
+    Ipv6Addr::from_str(s).unwrap().segments().to_vec()
+    /*let mut vec = s.split(':').collect::<Vec<&str>>();
+    println!("vec: {:?}", vec);
+    let flag = vec.iter().all(|item| !item.is_empty());
+    if !flag {
+        let oth_len = 8 - vec.len() + 1;
+        println!("oth_len: {}", oth_len);
+        if let Some(index) = vec.iter().position(|&x| x.is_empty()) {
+            println!("index: {} is empty", index);
+            vec.remove(index);
+            for _ in 0..oth_len {
+                vec.insert(index, "0");
+            }
+        }
+    }
+    vec.iter()
+        .map(|item| u16::from_str_radix(item, 16).unwrap())
+        .collect::<Vec<u16>>()*/
 }
 
 #[shuttle_runtime::main]
@@ -89,8 +150,24 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
         cfg.service(hello_bird)
             .service(find_seek)
             .service(eg_encryption)
-            .service(day2_task2);
+            .service(day2_task2)
+            .service(v6_dest)
+            .service(v6_key);
     };
 
     Ok(config.into())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_to_ip_v6_vec() {
+        let s = "::1";
+        let v = to_ip_v6_vec(&s);
+        println!("v: {:?}", v);
+        assert_eq!(v.len(), 8);
+    }
 }
