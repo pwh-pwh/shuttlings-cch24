@@ -11,3 +11,4 @@ tokio = "1.26.0"
 serde = { version = "1.0.215", features = ["derive"] }
 serde_urlencoded = "0.7.1"
 log = "0.4.22"
+toml = "0.8.19"

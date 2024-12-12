@@ -1,10 +1,13 @@
+mod entry;
+
 use actix_web::http::StatusCode;
-use actix_web::{get, web, web::ServiceConfig, HttpResponse};
+use actix_web::{get, post, web, web::ServiceConfig, HttpRequest, HttpResponse, HttpResponseBuilder, Responder};
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
+use crate::entry::Config;
 
 #[derive(Deserialize)]
 struct QueryInfo {
@@ -144,6 +147,18 @@ pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
         .collect::<Vec<u16>>()*/
 }
 
+#[post("/5/manifest")]
+async fn manifest_api(req_body: String) -> impl Responder {
+    if let Ok(config) = toml::from_str::<Config>(&req_body) {
+        let r = config.package.metadata.orders
+            .iter().map(|item| format!("{}: {}", item.item, item.quantity))
+            .collect::<Vec<String>>().join("\n");
+        HttpResponse::Ok().body(r)
+    } else {
+        HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
+    }
+}
+
 #[shuttle_runtime::main]
 async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     let config = move |cfg: &mut ServiceConfig| {
@@ -152,7 +167,8 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
             .service(eg_encryption)
             .service(day2_task2)
             .service(v6_dest)
-            .service(v6_key);
+            .service(v6_key)
+            .service(manifest_api);
     };
 
     Ok(config.into())
