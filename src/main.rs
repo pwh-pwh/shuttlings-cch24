@@ -1,6 +1,6 @@
 mod entry;
 
-use actix_web::http::StatusCode;
+use actix_web::http::{header, StatusCode};
 use actix_web::{get, post, web, web::ServiceConfig, HttpRequest, HttpResponse, HttpResponseBuilder, Responder};
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
@@ -149,7 +149,8 @@ pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
 }
 
 #[post("/5/manifest")]
-async fn manifest_api(req_body: String) -> impl Responder {
+async fn manifest_api(req_body: String,header: web::Header<header::ContentType>) -> impl Responder {
+    println!("header: {}", header);
     println!("req_body: {}", req_body);
     match Manifest::from_str(&req_body) {
         Ok(manifest) => {
@@ -177,28 +178,6 @@ async fn manifest_api(req_body: String) -> impl Responder {
         },
         Err(e) => HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest"),
     }
-/*    if let Err(e) = Manifest::from_str(&req_body) {
-        HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest")
-    } else {
-        if let Ok(config) = toml::from_str::<Config>(&req_body) {
-            // check magic word
-            let cf_flag = config.package.keywords.iter().any(|k|k.eq("Christmas 2024"));
-            if !cf_flag {
-                return HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Magic keyword not provided");
-            }
-            let r = config.package.metadata.orders
-                .iter()
-                .filter(|o| o.quantity.is_some())
-                .map(|item| format!("{}: {}", item.item, item.quantity.unwrap()))
-                .collect::<Vec<String>>().join("\n");
-            if r.is_empty() {
-                return HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
-            }
-            HttpResponse::Ok().body(r)
-        } else {
-            HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
-        }
-    }*/
 }
 
 #[shuttle_runtime::main]
