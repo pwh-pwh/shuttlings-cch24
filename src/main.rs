@@ -150,13 +150,19 @@ pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
 
 #[post("/5/manifest")]
 async fn manifest_api(req_body: String) -> impl Responder {
+    println!("req_body: {}", req_body);
     if let Err(e) = Manifest::from_str(&req_body) {
         HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest")
     } else {
         if let Ok(config) = toml::from_str::<Config>(&req_body) {
             let r = config.package.metadata.orders
-                .iter().map(|item| format!("{}: {}", item.item, item.quantity))
+                .iter()
+                .filter(|o| o.quantity.is_some())
+                .map(|item| format!("{}: {}", item.item, item.quantity.unwrap()))
                 .collect::<Vec<String>>().join("\n");
+            if r.is_empty() {
+                return HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
+            }
             HttpResponse::Ok().body(r)
         } else {
             HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()

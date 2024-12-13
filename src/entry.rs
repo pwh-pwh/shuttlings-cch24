@@ -15,11 +15,15 @@ pub struct Package {
 
 #[derive(Serialize,Deserialize)]
 pub struct Metadata {
+    #[serde(default)]
     pub orders: Vec<Order>,
 }
 
+#[serde_with::serde_as]
 #[derive(Serialize,Deserialize)]
 pub struct Order {
     pub item: String,
-    pub quantity: u32,
+    #[serde_as(deserialize_as = "serde_with::DefaultOnError")]
+    #[serde(default)]
+    pub quantity: Option<u32>,
 }
