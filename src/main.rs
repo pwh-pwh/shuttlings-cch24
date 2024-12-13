@@ -7,6 +7,7 @@ use shuttle_actix_web::ShuttleActixWeb;
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
+use cargo_manifest::Manifest;
 use crate::entry::Config;
 
 #[derive(Deserialize)]
@@ -149,13 +150,17 @@ pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
 
 #[post("/5/manifest")]
 async fn manifest_api(req_body: String) -> impl Responder {
-    if let Ok(config) = toml::from_str::<Config>(&req_body) {
-        let r = config.package.metadata.orders
-            .iter().map(|item| format!("{}: {}", item.item, item.quantity))
-            .collect::<Vec<String>>().join("\n");
-        HttpResponse::Ok().body(r)
+    if let Err(e) = Manifest::from_str(&req_body) {
+        HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest")
     } else {
-        HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
+        if let Ok(config) = toml::from_str::<Config>(&req_body) {
+            let r = config.package.metadata.orders
+                .iter().map(|item| format!("{}: {}", item.item, item.quantity))
+                .collect::<Vec<String>>().join("\n");
+            HttpResponse::Ok().body(r)
+        } else {
+            HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
+        }
     }
 }
 

@@ -35,12 +35,12 @@ keywords = ["Christmas 2024"]
 [[package.metadata.orders]]
 item = "Toy car"
 quantity = 2
-
-[[package.metadata.orders]]
-item = "Lego brick"
-quantity = 230
     "#;
 
     let config: Config = toml::from_str(toml_data).unwrap();
-    println!("{}", config.package.name);
+    let r = config.package.metadata.orders
+        .iter().map(|item| format!("{}: {}", item.item, item.quantity))
+        .collect::<Vec<String>>().join("\n");
+
+    assert_eq!(r, "Toy car: 2");
 }
