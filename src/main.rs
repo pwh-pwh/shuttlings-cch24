@@ -151,10 +151,41 @@ pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
 #[post("/5/manifest")]
 async fn manifest_api(req_body: String) -> impl Responder {
     println!("req_body: {}", req_body);
-    if let Err(e) = Manifest::from_str(&req_body) {
+    match Manifest::from_str(&req_body) {
+        Ok(manifest) => {
+            let cf_flag = manifest.package.unwrap().keywords.and_then(|k|k.as_local())
+                .map(|k| k.contains(&"Christmas 2024".to_string()))
+                .unwrap_or_default();
+            if !cf_flag {
+                return HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Magic keyword not provided");
+            }
+            if let Ok(config) = toml::from_str::<Config>(&req_body) {
+                // check magic word
+
+                let r = config.package.metadata.orders
+                    .iter()
+                    .filter(|o| o.quantity.is_some())
+                    .map(|item| format!("{}: {}", item.item, item.quantity.unwrap()))
+                    .collect::<Vec<String>>().join("\n");
+                if r.is_empty() {
+                    return HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
+                }
+                HttpResponse::Ok().body(r)
+            } else {
+                HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
+            }
+        },
+        Err(e) => HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest"),
+    }
+/*    if let Err(e) = Manifest::from_str(&req_body) {
         HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest")
     } else {
         if let Ok(config) = toml::from_str::<Config>(&req_body) {
+            // check magic word
+            let cf_flag = config.package.keywords.iter().any(|k|k.eq("Christmas 2024"));
+            if !cf_flag {
+                return HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Magic keyword not provided");
+            }
             let r = config.package.metadata.orders
                 .iter()
                 .filter(|o| o.quantity.is_some())
@@ -167,7 +198,7 @@ async fn manifest_api(req_body: String) -> impl Responder {
         } else {
             HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
         }
-    }
+    }*/
 }
 
 #[shuttle_runtime::main]
