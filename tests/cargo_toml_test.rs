@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use cargo_manifest::Manifest;
+use std::str::FromStr;
 
 #[test]
 fn test_toml_cargo() {

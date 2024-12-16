@@ -1,16 +1,15 @@
 mod entry;
 
+use crate::entry::Metadata;
 use actix_web::http::{header, StatusCode};
-use actix_web::{get, post, web, web::ServiceConfig, HttpRequest, HttpResponse, HttpResponseBuilder, Responder};
+use actix_web::{get, post, web, web::ServiceConfig, HttpRequest, HttpResponse, Responder};
+use cargo_manifest::Manifest;
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
+use shuttle_runtime::__internals::serde_json;
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
-use actix_web::http::header::ContentType;
-use actix_web::web::{head, Header};
-use cargo_manifest::Manifest;
-use crate::entry::Config;
 
 #[derive(Deserialize)]
 struct QueryInfo {
@@ -151,53 +150,56 @@ pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
 }
 
 #[post("/5/manifest")]
-async fn manifest_api(req_body: String,header: web::Header<header::ContentType>) -> impl Responder {
-    println!("header: {}", header);
-    println!("req_body: {}", req_body);
-    match header.to_string().as_str() {
-        "application/toml" => deal_with_toml(&req_body),
-        "application/yaml" => deal_with_yaml(&req_body),
-        "application/json" => deal_with_json(&req_body),
-        _ => HttpResponse::Ok().status(StatusCode::UNSUPPORTED_MEDIA_TYPE).finish()
-    }
-}
-
-fn deal_with_toml(req_body: &str) -> impl Responder {
-    match Manifest::from_str(&req_body) {
-        Ok(manifest) => {
-            let cf_flag = manifest.package.unwrap().keywords.and_then(|k|k.as_local())
-                .map(|k| k.contains(&"Christmas 2024".to_string()))
-                .unwrap_or_default();
-            if !cf_flag {
-                return HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Magic keyword not provided");
-            }
-            if let Ok(config) = toml::from_str::<Config>(&req_body) {
-                // check magic word
-                let r = config.package.metadata.orders
-                    .iter()
-                    .filter(|o| o.quantity.is_some())
-                    .map(|item| format!("{}: {}", item.item, item.quantity.unwrap()))
-                    .collect::<Vec<String>>().join("\n");
-                if r.is_empty() {
-                    return HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
-                }
-                HttpResponse::Ok().body(r)
-            } else {
-                HttpResponse::Ok().status(StatusCode::NO_CONTENT).finish()
-            }
+async fn manifest_api(req: HttpRequest, data: String) -> impl Responder {
+    let Ok(Some(package)) = (match req
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|ct| ct.to_str().ok())
+    {
+        Some(ct) => match ct {
+            "application/toml" => toml::from_str::<Manifest<Metadata>>(&data)
+                .map_err(|_| "Invalid TOML Manifest".to_string()),
+            "application/json" => serde_json::from_str::<Manifest<Metadata>>(&data)
+                .map_err(|_| "Invalid JSON Manifest".to_string()),
+            "application/yaml" => serde_yml::from_str::<Manifest<Metadata>>(&data)
+                .map_err(|_| "Invalid YAML manifest".to_string()),
+            _ => return HttpResponse::UnsupportedMediaType().finish(),
         },
-        Err(e) => HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest"),
+        None => return HttpResponse::UnsupportedMediaType().finish(),
+    })
+    .map(|m| m.package) else {
+        return HttpResponse::BadRequest().body("Invalid manifest");
+    };
+
+    // Check for code in keyword
+    if !package
+        .keywords
+        .and_then(|k| k.as_local())
+        .map(|k| k.contains(&"Christmas 2024".to_string()))
+        .unwrap_or_default()
+    {
+        return HttpResponse::BadRequest().body("Magic keyword not provided");
     }
-}
 
-fn deal_with_yaml(req_body: &str) -> impl Responder {
-    todo!()
-}
+    // Process orders
+    let Some(orders) = package.metadata.map(|m| {
+        m.orders
+            .into_iter()
+            .filter(|o| o.quantity.is_some())
+            .map(|o| format!("{}: {}", o.item, o.quantity.unwrap()))
+            .collect::<Vec<String>>()
+    }) else {
+        return HttpResponse::NoContent().finish();
+    };
 
-fn deal_with_json(req_body: &str) -> impl Responder {
-    todo!()
-}
+    // return no content if no valid order
+    if orders.is_empty() {
+        return HttpResponse::NoContent().finish();
+    }
 
+    // Final response
+    HttpResponse::Ok().body(orders.join("\n"))
+}
 
 #[shuttle_runtime::main]
 async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
@@ -214,11 +216,10 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
     Ok(config.into())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_to_ip_v6_vec() {
         let s = "::1";

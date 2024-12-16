@@ -13,14 +13,14 @@ pub struct Package {
     pub metadata: Metadata,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Metadata {
     #[serde(default)]
     pub orders: Vec<Order>,
 }
 
 #[serde_with::serde_as]
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Order {
     pub item: String,
     #[serde_as(deserialize_as = "serde_with::DefaultOnError")]

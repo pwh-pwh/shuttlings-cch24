@@ -13,14 +13,14 @@ struct Package {
     metadata: Metadata,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct Metadata {
     #[serde(default)]
     orders: Vec<Order>,
 }
 
 #[serde_with::serde_as]
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct Order {
     item: String,
     #[serde_as(deserialize_as = "serde_with::DefaultOnError")]
@@ -58,10 +58,15 @@ count = 3
 
     "#;
     let config: Config = toml::from_str(toml_data).unwrap();
-    let r = config.package.metadata.orders
-        .iter().filter(|o| o.quantity.is_some())
+    let r = config
+        .package
+        .metadata
+        .orders
+        .iter()
+        .filter(|o| o.quantity.is_some())
         .map(|item| format!("{}: {}", item.item, item.quantity.unwrap()))
-        .collect::<Vec<String>>().join("\n");
+        .collect::<Vec<String>>()
+        .join("\n");
     println!("r: {}", r);
     assert_eq!(r, "Toy car: 2");
 }
