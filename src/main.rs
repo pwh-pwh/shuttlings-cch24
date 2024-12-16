@@ -10,6 +10,9 @@ use shuttle_runtime::__internals::serde_json;
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use shuttlings_cch24::day9::{milk, new_rate_limiter};
 
 #[derive(Deserialize)]
 struct QueryInfo {
@@ -203,6 +206,8 @@ async fn manifest_api(req: HttpRequest, data: String) -> impl Responder {
 
 #[shuttle_runtime::main]
 async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    let limiter = new_rate_limiter();
+    let bucket = Arc::new(Mutex::new(limiter));
     let config = move |cfg: &mut ServiceConfig| {
         cfg.service(hello_bird)
             .service(find_seek)
@@ -210,6 +215,8 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
             .service(day2_task2)
             .service(v6_dest)
             .service(v6_key)
+            .app_data(web::Data::new(bucket.clone()))
+            .service(milk)
             .service(manifest_api);
     };
 
