@@ -29,6 +29,13 @@ pub fn new_rate_limiter() -> RateLimiter {
         .build()
 }
 
+#[post("/9/refill")]
+async fn refill(limiter: web::Data<Arc<Mutex<RateLimiter>>>) -> impl Responder {
+    let mut bucket = limiter.lock().await;
+    *bucket = new_rate_limiter();
+    HttpResponse::Ok().finish()
+}
+
 #[post("/9/milk")]
 async fn milk(
     limiter: web::Data<Arc<Mutex<RateLimiter>>>,

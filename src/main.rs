@@ -7,7 +7,7 @@ use cargo_manifest::Manifest;
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_runtime::__internals::serde_json;
-use shuttlings_cch24::day9::{milk, new_rate_limiter};
+use shuttlings_cch24::day9::{milk, new_rate_limiter, refill};
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
@@ -217,6 +217,7 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
             .service(v6_key)
             .app_data(web::Data::new(bucket.clone()))
             .service(milk)
+            .service(refill)
             .service(manifest_api);
     };
 
