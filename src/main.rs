@@ -7,6 +7,8 @@ use shuttle_actix_web::ShuttleActixWeb;
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
+use actix_web::http::header::ContentType;
+use actix_web::web::{head, Header};
 use cargo_manifest::Manifest;
 use crate::entry::Config;
 
@@ -152,6 +154,15 @@ pub fn to_ip_v6_vec(s: &str) -> Vec<u16> {
 async fn manifest_api(req_body: String,header: web::Header<header::ContentType>) -> impl Responder {
     println!("header: {}", header);
     println!("req_body: {}", req_body);
+    match header.to_string().as_str() {
+        "application/toml" => deal_with_toml(&req_body),
+        "application/yaml" => deal_with_yaml(&req_body),
+        "application/json" => deal_with_json(&req_body),
+        _ => HttpResponse::Ok().status(StatusCode::UNSUPPORTED_MEDIA_TYPE).finish()
+    }
+}
+
+fn deal_with_toml(req_body: &str) -> impl Responder {
     match Manifest::from_str(&req_body) {
         Ok(manifest) => {
             let cf_flag = manifest.package.unwrap().keywords.and_then(|k|k.as_local())
@@ -162,7 +173,6 @@ async fn manifest_api(req_body: String,header: web::Header<header::ContentType>)
             }
             if let Ok(config) = toml::from_str::<Config>(&req_body) {
                 // check magic word
-
                 let r = config.package.metadata.orders
                     .iter()
                     .filter(|o| o.quantity.is_some())
@@ -179,6 +189,15 @@ async fn manifest_api(req_body: String,header: web::Header<header::ContentType>)
         Err(e) => HttpResponse::Ok().status(StatusCode::BAD_REQUEST).body("Invalid manifest"),
     }
 }
+
+fn deal_with_yaml(req_body: &str) -> impl Responder {
+    todo!()
+}
+
+fn deal_with_json(req_body: &str) -> impl Responder {
+    todo!()
+}
+
 
 #[shuttle_runtime::main]
 async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
