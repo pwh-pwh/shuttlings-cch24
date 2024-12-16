@@ -7,12 +7,12 @@ use cargo_manifest::Manifest;
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_runtime::__internals::serde_json;
+use shuttlings_cch24::day9::{milk, new_rate_limiter};
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use shuttlings_cch24::day9::{milk, new_rate_limiter};
 
 #[derive(Deserialize)]
 struct QueryInfo {
