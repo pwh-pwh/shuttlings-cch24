@@ -2,7 +2,7 @@ mod entry;
 
 use crate::entry::Metadata;
 use actix_web::http::{header, StatusCode};
-use actix_web::{get, post, web, web::ServiceConfig, HttpRequest, HttpResponse, Responder};
+use actix_web::{error, get, post, web, web::ServiceConfig, HttpRequest, HttpResponse, Responder};
 use cargo_manifest::Manifest;
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
@@ -13,7 +13,7 @@ use std::ops::BitXor;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use shuttlings_cch24::day12::{board, reset, Board};
+use shuttlings_cch24::day12::{board, place, random_board, reset, Board};
 
 #[derive(Deserialize)]
 struct QueryInfo {
@@ -223,7 +223,12 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
             .service(manifest_api)
             .app_data(web::Data::new(grid.clone()))
             .service(board)
-            .service(reset);
+            .service(reset)
+            .service(place)
+            .service(random_board)
+            .app_data(web::PathConfig::default().error_handler(|err, _| {
+                error::InternalError::from_response(err, HttpResponse::BadRequest().into()).into()
+            }));
     };
 
     Ok(config.into())
