@@ -12,7 +12,8 @@ use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
+use shuttlings_cch24::day12::{board, reset, Board};
 
 #[derive(Deserialize)]
 struct QueryInfo {
@@ -208,6 +209,7 @@ async fn manifest_api(req: HttpRequest, data: String) -> impl Responder {
 async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     let limiter = new_rate_limiter();
     let bucket = Arc::new(Mutex::new(limiter));
+    let grid = Arc::new(RwLock::new(Board::default()));
     let config = move |cfg: &mut ServiceConfig| {
         cfg.service(hello_bird)
             .service(find_seek)
@@ -218,7 +220,10 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
             .app_data(web::Data::new(bucket.clone()))
             .service(milk)
             .service(refill)
-            .service(manifest_api);
+            .service(manifest_api)
+            .app_data(web::Data::new(grid.clone()))
+            .service(board)
+            .service(reset);
     };
 
     Ok(config.into())
