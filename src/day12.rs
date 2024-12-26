@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::sync::Arc;
 use actix_web::{get, post, web, HttpResponse, Responder};
+use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
@@ -31,15 +32,18 @@ impl BoardValue {
 pub struct Board {
     pub grid: [[BoardValue;4];4],
     pub winner: Option<BoardValue>,
+    pub rng: rand::rngs::StdRng,
 }
 
 impl Default for Board {
     fn default() -> Self {
         Self {
             grid: [[BoardValue::Empty;4];4],
-            winner: None
+            winner: None,
+            rng: rand::rngs::StdRng::seed_from_u64(2024)
         }
     }
+
 }
 
 impl Board {
@@ -78,6 +82,63 @@ impl Board {
 
         state
     }
+
+    pub fn generate_random_board(&mut self) {
+        let grid = &mut self.grid;
+        self.winner = Some(BoardValue::Empty);
+
+        // populating the grid
+        for row in grid.iter_mut() {
+            for val in row.iter_mut() {
+                let res = self.rng.gen::<bool>();
+                if res {
+                    *val = BoardValue::Cookie
+                } else {
+                    *val = BoardValue::Milk
+                }
+            }
+        }
+
+        // check for winners
+        // horizontal
+        for y in 0..4 {
+            if grid[y].iter().all(|&t| t == BoardValue::Cookie) {
+                self.winner = Some(BoardValue::Cookie);
+                return;
+            } else if grid[y].iter().all(|&t| t == BoardValue::Milk) {
+                self.winner = Some(BoardValue::Milk);
+                return;
+            }
+        }
+
+        // vertical
+        for x in 0..4 {
+            if (0..grid[0].len()).all(|y| grid[y][x] == BoardValue::Cookie) {
+                self.winner = Some(BoardValue::Cookie);
+                return;
+            } else if (0..grid[0].len()).all(|y| grid[y][x] == BoardValue::Milk) {
+                self.winner = Some(BoardValue::Milk);
+                return;
+            }
+        }
+
+        // tl -> br
+        if (0..grid.len()).all(|i| grid[i][i] == BoardValue::Cookie) {
+            self.winner = Some(BoardValue::Cookie);
+            return;
+        } else if (0..grid.len()).all(|i| grid[i][i] == BoardValue::Milk) {
+            self.winner = Some(BoardValue::Milk);
+            return;
+        }
+
+        // br -> tl
+        if (0..grid.len()).all(|i| grid[grid.len() - i - 1][i] == BoardValue::Cookie) {
+            self.winner = Some(BoardValue::Cookie);
+        } else if (0..grid.len()).all(|i| grid[grid.len() - i - 1][i] == BoardValue::Milk) {
+            self.winner = Some(BoardValue::Milk);
+        }
+    }
+
 }
 
 #[get("/12/board")]
@@ -167,7 +228,7 @@ pub async fn place(
 pub async fn random_board(data: web::Data<Arc<RwLock<Board>>>) -> HttpResponse {
     println!("random exec");
     let mut data = data.write().await;
-    // data.generate_random_board();
+    data.generate_random_board();
 
     HttpResponse::Ok().body(data.get_current_state().to_string())
 }
