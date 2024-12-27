@@ -1,9 +1,9 @@
-use std::ffi::c_long;
-use std::time::{SystemTime, UNIX_EPOCH};
-use actix_web::{get, post, web, HttpRequest, HttpResponse, HttpResponseBuilder, Responder};
 use actix_web::cookie::Cookie;
+use actix_web::{get, post, web, HttpRequest, HttpResponse, HttpResponseBuilder, Responder};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use std::ffi::c_long;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -20,13 +20,22 @@ async fn wrap(data: String) -> impl Responder {
         .unwrap()
         .as_secs() as usize
         + 3600;
-    let claims = Claims { data: data.clone(),exp: exp };
-    let token = encode(&Header::default(),&claims, &EncodingKey::from_secret("secret".as_ref())).unwrap();
-//     set cookie
+    let claims = Claims {
+        data: data.clone(),
+        exp: exp,
+    };
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret("secret".as_ref()),
+    )
+    .unwrap();
+    //     set cookie
     println!("{}", token);
-    HttpResponse::Ok().cookie(Cookie::build("gift",token).finish()).finish()
+    HttpResponse::Ok()
+        .cookie(Cookie::build("gift", token).finish())
+        .finish()
 }
-
 
 #[get("/16/unwrap")]
 async fn unwrap(req: HttpRequest) -> impl Responder {
@@ -34,7 +43,12 @@ async fn unwrap(req: HttpRequest) -> impl Responder {
     if let Some(cookie) = req.cookie("gift") {
         let token = cookie.value();
         println!("token: {}", token);
-        let result = decode::<Claims>(token, &DecodingKey::from_secret("secret".as_ref()),&Validation::default()).unwrap();
+        let result = decode::<Claims>(
+            token,
+            &DecodingKey::from_secret("secret".as_ref()),
+            &Validation::default(),
+        )
+        .unwrap();
         println!("result: {}", result.claims.data);
         HttpResponse::Ok().body(result.claims.data)
     } else {
@@ -42,10 +56,15 @@ async fn unwrap(req: HttpRequest) -> impl Responder {
     }
 }
 
+#[post("/16/decode")]
+async fn decode_endpoint(jwt: String) -> impl Responder {
+    HttpResponse::Ok().finish()
+}
+
 #[cfg(test)]
 mod tests {
-    use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
     use crate::day16::Claims;
+    use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 
     #[test]
     fn test_jwt() {

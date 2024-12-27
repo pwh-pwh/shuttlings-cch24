@@ -7,14 +7,14 @@ use cargo_manifest::Manifest;
 use serde::Deserialize;
 use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_runtime::__internals::serde_json;
+use shuttlings_cch24::day12::{board, place, random_board, reset, Board};
+use shuttlings_cch24::day16::{decode_endpoint, unwrap, wrap};
 use shuttlings_cch24::day9::{milk, new_rate_limiter, refill};
 use std::net::Ipv6Addr;
 use std::ops::BitXor;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use shuttlings_cch24::day12::{board, place, random_board, reset, Board};
-use shuttlings_cch24::day16::{unwrap, wrap};
 
 #[derive(Deserialize)]
 struct QueryInfo {
@@ -229,6 +229,7 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
             .service(random_board)
             .service(wrap)
             .service(unwrap)
+            .service(decode_endpoint)
             .app_data(web::PathConfig::default().error_handler(|err, _| {
                 error::InternalError::from_response(err, HttpResponse::BadRequest().into()).into()
             }));

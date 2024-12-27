@@ -1,8 +1,8 @@
-use std::borrow::Borrow;
-use std::sync::Arc;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 const WALL: char = '⬜';
@@ -30,7 +30,7 @@ impl BoardValue {
 }
 
 pub struct Board {
-    pub grid: [[BoardValue;4];4],
+    pub grid: [[BoardValue; 4]; 4],
     pub winner: Option<BoardValue>,
     pub rng: rand::rngs::StdRng,
 }
@@ -38,16 +38,14 @@ pub struct Board {
 impl Default for Board {
     fn default() -> Self {
         Self {
-            grid: [[BoardValue::Empty;4];4],
+            grid: [[BoardValue::Empty; 4]; 4],
             winner: None,
-            rng: rand::rngs::StdRng::seed_from_u64(2024)
+            rng: rand::rngs::StdRng::seed_from_u64(2024),
         }
     }
-
 }
 
 impl Board {
-
     pub fn build_to_string(&self) -> String {
         let mut state = [[WALL; 6]; 5];
         // Replacing the middle of the 6x5 grid, with the 4x4 gird
@@ -138,7 +136,6 @@ impl Board {
             self.winner = Some(BoardValue::Milk);
         }
     }
-
 }
 
 #[get("/12/board")]
