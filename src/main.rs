@@ -14,6 +14,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use shuttlings_cch24::day12::{board, place, random_board, reset, Board};
+use shuttlings_cch24::day16::{unwrap, wrap};
 
 #[derive(Deserialize)]
 struct QueryInfo {
@@ -226,6 +227,8 @@ async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clon
             .service(reset)
             .service(place)
             .service(random_board)
+            .service(wrap)
+            .service(unwrap)
             .app_data(web::PathConfig::default().error_handler(|err, _| {
                 error::InternalError::from_response(err, HttpResponse::BadRequest().into()).into()
             }));
