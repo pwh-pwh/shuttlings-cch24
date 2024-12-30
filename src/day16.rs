@@ -1,9 +1,10 @@
 use actix_web::cookie::Cookie;
 use actix_web::{get, post, web, HttpRequest, HttpResponse, HttpResponseBuilder, Responder};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{decode, decode_header, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::ffi::c_long;
 use std::time::{SystemTime, UNIX_EPOCH};
+use jsonwebtoken::errors::{Error, ErrorKind};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -58,7 +59,30 @@ async fn unwrap(req: HttpRequest) -> impl Responder {
 
 #[post("/16/decode")]
 async fn decode_endpoint(jwt: String) -> impl Responder {
-    HttpResponse::Ok().finish()
+    println!("start");
+    let pem = include_str!("static/santa_public_key.pem");
+    let Ok(key) = DecodingKey::from_rsa_pem(pem.as_bytes()) else {
+        return HttpResponse::InternalServerError().finish();
+    };
+    let Ok(_)  = decode_header(&jwt) else {
+        return HttpResponse::BadRequest().finish();
+    };
+    println!("header ok");
+    let mut validation = Validation::default();
+    validation.validate_exp = true;
+    validation.algorithms = vec![Algorithm::RS256, Algorithm::RS512];
+    validation.set_required_spec_claims(&[""]);
+    match decode::<serde_json::Value>(&jwt, &key, &validation) {
+        Ok(result) => HttpResponse::Ok().json(result.claims),
+        Err(e) => match e.kind() {
+            ErrorKind::InvalidSignature => {
+                HttpResponse::Unauthorized().finish()
+            },
+            _ => {
+                println!("error: {}", e);
+                HttpResponse::BadRequest().finish() },
+        }
+    }
 }
 
 #[cfg(test)]
